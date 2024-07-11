@@ -83,15 +83,15 @@ def plot_backtest_returns_probabilities(monte_carlo_results: np.ndarray, return_
     plt.tight_layout()
     return fig
 
-def generate_html_report(figures: List[plt.Figure], etfs: List[str], optimal_weights: np.ndarray) -> str:
+def generate_html_report(figures: List[plt.Figure], etfs: List[str], optimal_weights: np.ndarray, whole_units: np.ndarray, remaining_funds: np.ndarray, lower_whole_units: np.ndarray, upper_whole_units: np.ndarray, allocation_funds: np.ndarray, lower_allocation_funds: np.ndarray, upper_allocation_funds: np.ndarray) -> str:
     """Generate an HTML report with all the plots."""
     html_content = "<html><head><title>Portfolio Optimization Report</title></head><body>"
     
     # Add optimal portfolio weights
     html_content += "<h2>Optimal Portfolio Weights</h2>"
-    html_content += "<table border='1'><tr><th>ETF</th><th>Weight</th></tr>"
-    for etf, weight in zip(etfs, optimal_weights):
-        html_content += f"<tr><td>{etf}</td><td>{weight:.4f}</td></tr>"
+    html_content += "<table border='1'><tr><th>ETF</th><th>Weight</th><th>Units</th><th>Lower Units</th><th>Upper Units</th><th>Allocation Funds</th><th>Lower Allocation Funds</th><th>Upper Allocation Funds</th></tr>"
+    for etf, weight, units, lower_units, upper_units, allocation, lower_allocation, upper_allocation in zip(etfs, optimal_weights, whole_units,lower_whole_units, upper_whole_units, allocation_funds, lower_allocation_funds, upper_allocation_funds):
+        html_content += f"<tr><td>{etf}</td><td>{weight:.4f}</td><td>{units}</td><td>{lower_units}</td><td>{upper_units}</td><td>${allocation:.2f}</td><td>${lower_allocation:.2f}</td><td>${upper_allocation:.4f}</td></tr>"
     html_content += "</table>"
 
     # Add all figures

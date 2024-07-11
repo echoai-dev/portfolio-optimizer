@@ -8,10 +8,51 @@ from visualization import (plot_monte_carlo, plot_forecast, plot_probabilities,
                            plot_backtest_vs_forecast, plot_backtest_returns_probabilities,
                            generate_html_report, save_html_report)
 from backtesting import backtest, calculate_continuous_actual_probabilities
-from portfolio_composition import portfolio_composition
+from portfolio_composition import portfolio_composition_with_confidence_intervals as portfolio_composition
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+from joblib import Parallel, delayed, cpu_count
+from typing import Tuple
+
+def bootstrap_sample(returns: pd.DataFrame) -> np.ndarray:
+    """
+    Generate bootstrap samples of portfolio weights and calculate the mean, lower bound, and upper bound.
+
+    Parameters:
+        returns (pd.DataFrame): The DataFrame containing the returns of the portfolio.
+
+    Returns:
+        np.ndarray: The optimal weights for the portfolio.
+    """
+    sample_indices = np.random.choice(returns.index, size=len(returns), replace=True)
+    sample_returns = returns.loc[sample_indices]
+    optimal_weights, _, _ = optimize_portfolio(sample_returns)
+    return optimal_weights
+
+def bootstrap_portfolio_weights(returns: pd.DataFrame, num_samples: int = 100, confidence_level: float = 0.95) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Generate bootstrap samples of portfolio weights and calculate the mean, lower bound, and upper bound.
+
+    Parameters:
+        returns (pd.DataFrame): The DataFrame containing the returns of the portfolio.
+        num_samples (int, optional): The number of bootstrap samples to generate. Default is 100.
+        confidence_level (float, optional): The confidence level for the confidence interval. Default is 0.95.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray]: A tuple containing the mean weights, lower bound, and upper bound.
+    """
+    num_cores = min(num_samples, cpu_count()-1)
+    bootstrap_weights = Parallel(n_jobs=num_cores)(delayed(bootstrap_sample)(returns) for _ in range(num_samples))
+    bootstrap_weights = np.array(bootstrap_weights)
+    
+    lower_bound = np.percentile(bootstrap_weights, (1 - confidence_level) / 2 * 100, axis=0)
+    upper_bound = np.percentile(bootstrap_weights, (1 - (1 - confidence_level) / 2) * 100, axis=0)
+    mean_weights = np.mean(bootstrap_weights, axis=0)
+    
+    return mean_weights, lower_bound, upper_bound
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Portfolio Optimization Tool')
@@ -33,6 +74,14 @@ def main():
 
         logger.info(f"Number of assets: {returns.shape[1]}")
         logger.info(f"ETFs: {args.etfs}")
+
+        # Calculate confidence bounds for portfolio weights
+        mean_weights, lower_bound, upper_bound = bootstrap_portfolio_weights(returns, num_samples=100, confidence_level=0.95)
+        
+        # Display the results
+        print("Optimal Portfolio Weights with Confidence Bounds:")
+        for etf, mean_weight, lb, ub in zip(args.etfs, mean_weights, lower_bound, upper_bound):
+            print(f"{etf}: {mean_weight:.4f} (95% CI: {lb:.4f} - {ub:.4f})")
 
         # Optimize portfolio
         optimal_weights, optimal_metrics, monte_carlo = optimize_portfolio(returns, use_sharpe=args.use_sharpe)
@@ -63,10 +112,9 @@ def main():
 
         # Calculate portfolio composition
         last_close_prices = data.iloc[-1]
-        portfolio_composition(args.etfs, optimal_weights, last_close_prices, args.total_funds)
-
+        whole_units, remaining_funds, lower_whole_units, upper_whole_units, allocation_funds, lower_allocation_funds, upper_allocation_funds = portfolio_composition(args.etfs, mean_weights, lower_bound, upper_bound, last_close_prices, args.total_funds)
         # Generate and save HTML report
-        html_content = generate_html_report(figures, args.etfs, optimal_weights)
+        html_content = generate_html_report(figures, args.etfs, optimal_weights,whole_units, remaining_funds, lower_whole_units, upper_whole_units, allocation_funds, lower_allocation_funds, upper_allocation_funds)
         save_html_report(html_content)
 
     except Exception as e:

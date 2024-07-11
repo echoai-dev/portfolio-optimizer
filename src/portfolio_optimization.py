@@ -4,6 +4,7 @@ from numba import jit
 from typing import Tuple, Dict
 from scipy.optimize import minimize
 import logging
+from arch.__future__ import reindexing
 from arch import arch_model
 
 logger = logging.getLogger(__name__)
@@ -12,10 +13,13 @@ def fit_garch_and_forecast_volatility(returns: pd.DataFrame) -> Dict[str, float]
     """Fit GARCH models and forecast volatility for each ETF."""
     volatility_forecasts = {}
     for etf, etf_returns in returns.items():
-        model = arch_model(etf_returns, vol='Garch', p=1, o=0, q=1)
+        mean = etf_returns.mean()
+        std = etf_returns.std()
+        normalized_returns = (etf_returns - mean) / std
+        model = arch_model(normalized_returns, vol='Garch', p=1, o=0, q=1)
         res = model.fit(disp='off')
         forecasts = res.forecast(start=0)
-        volatility_forecasts[etf] = np.sqrt(forecasts.variance.iloc[-1])
+        volatility_forecasts[etf] = np.sqrt(forecasts.variance.iloc[-1])*std
     return volatility_forecasts
 
 @jit(nopython=True)
@@ -65,9 +69,9 @@ def monte_carlo_simulation(returns: pd.DataFrame, volatility_forecasts: Dict[str
             portfolio_downside_dev = sum(weights[j] * downside_deviation(returns[etf]) for j, etf in enumerate(returns.columns))
             ratio = (portfolio_return - risk_free_rate) / portfolio_downside_dev
 
-        results[0,i] = portfolio_return
-        results[1,i] = portfolio_stddev
-        results[2,i] = ratio
+        results[0,i] = float(portfolio_return) 
+        results[1,i] = float(portfolio_stddev.iloc[0])
+        results[2,i] = float(ratio)
         results[3:,i] = weights
 
     return results
