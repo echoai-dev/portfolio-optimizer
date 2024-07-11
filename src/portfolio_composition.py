@@ -19,18 +19,24 @@ def portfolio_composition(etfs: List[str], weights: np.ndarray,
     
     return whole_units, remaining_funds
 
-def portfolio_composition_with_confidence_intervals(etfs: List[str], mean_weights: np.ndarray, lower_bound: np.ndarray, upper_bound: np.ndarray, 
+def portfolio_composition_with_cov_matrix(etfs: List[str], mean_weights: np.ndarray, cov_matrix: np.ndarray, 
                           last_close_prices: pd.Series, total_funds: float) -> Tuple[np.ndarray, float]:
-    """Calculate and print the portfolio composition based on optimized weights and their confidence intervals."""
+    """Calculate and print the portfolio composition based on optimized weights and their covariance matrix."""
     allocation_funds = total_funds * mean_weights
+    whole_units = np.floor(allocation_funds / last_close_prices).astype(int)
+    remaining_funds = total_funds - np.sum(whole_units * last_close_prices)
+    
+    # Calculate confidence intervals using the covariance matrix
+    std_devs = np.sqrt(np.diag(cov_matrix))
+    lower_bound = mean_weights - 1.96 * std_devs
+    upper_bound = mean_weights + 1.96 * std_devs
+
     lower_allocation_funds = total_funds * lower_bound
     upper_allocation_funds = total_funds * upper_bound
     
-    whole_units = np.floor(allocation_funds / last_close_prices).astype(int)
     lower_whole_units = np.floor(lower_allocation_funds / last_close_prices).astype(int)
     upper_whole_units = np.floor(upper_allocation_funds / last_close_prices).astype(int)
     
-    remaining_funds = total_funds - np.sum(whole_units * last_close_prices)
     lower_remaining_funds = total_funds - np.sum(lower_whole_units * last_close_prices)
     upper_remaining_funds = total_funds - np.sum(upper_whole_units * last_close_prices)
     

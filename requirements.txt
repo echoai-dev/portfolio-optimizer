@@ -5,3 +5,4 @@ matplotlib
 yfinance
 arch
 mpld3
+tqdm

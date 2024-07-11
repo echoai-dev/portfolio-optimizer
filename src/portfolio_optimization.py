@@ -71,7 +71,7 @@ def monte_carlo_simulation(returns: pd.DataFrame, volatility_forecasts: Dict[str
 
         results[0,i] = float(portfolio_return) 
         results[1,i] = float(portfolio_stddev.iloc[0])
-        results[2,i] = float(ratio)
+        results[2,i] = float(ratio.iloc[0])
         results[3:,i] = weights
 
     return results
@@ -97,11 +97,24 @@ def optimize_portfolio(returns: pd.DataFrame, risk_free_rate: float = 0.02, use_
     
     return optimal_weights, optimal_metrics, results
 
-def monte_carlo_forecast(returns: pd.DataFrame, weights: np.ndarray, forecast_horizon: int = 90, num_simulations: int = 10000) -> np.ndarray:
-    """Perform Monte Carlo forecast for portfolio returns."""
+def monte_carlo_forecast(returns: pd.DataFrame, mean_weights: np.ndarray, cov_matrix: np.ndarray, forecast_horizon: int = 90, num_simulations: int = 10000) -> np.ndarray:
+    """Perform Monte Carlo forecast for portfolio returns using multivariate normal distribution for weights."""
     mean_returns = returns.mean().values
-    cov_matrix = returns.cov().values
+    cov_returns = returns.cov().values
     
-    simulations = np.random.multivariate_normal(mean_returns, cov_matrix, size=(num_simulations, forecast_horizon))
-    portfolio_simulations = np.dot(simulations, weights)
-    return np.cumprod(1 + portfolio_simulations, axis=1) - 1
+    # Generate random weights from the multivariate normal distribution
+    random_weights = np.random.multivariate_normal(mean_weights, cov_matrix, size=num_simulations)
+    
+    # Ensure that random_weights sums to 1
+    random_weights /= random_weights.sum(axis=1)[:,np.newaxis]
+    
+    simulations = np.random.multivariate_normal(mean_returns, cov_returns, size=(num_simulations, forecast_horizon))
+    
+    # Reshape random_weights for broadcasting
+    # random_weights = random_weights[:, np.newaxis, :]
+    # import pdb; pdb.set_trace()
+    # Adjust einsum to correctly handle the dimensions
+    portfolio_simulations = np.einsum('ijk,ik->ij', simulations, random_weights)
+    
+    return np.cumprod(1 + portfolio_simulations.squeeze(), axis=1) - 1
+

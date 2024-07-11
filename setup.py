@@ -11,6 +11,8 @@ setup(
         "matplotlib",
         "yfinance",
         "arch",
+        "mpld3",
+        "tqdm",
     ],
     entry_points={
         "console_scripts": [
