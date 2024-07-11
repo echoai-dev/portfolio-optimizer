@@ -1,0 +1,7 @@
+numpy
+numba
+pandas
+matplotlib
+yfinance
+arch
+mpld3
