@@ -104,6 +104,9 @@ def monte_carlo_forecast(returns: pd.DataFrame, mean_weights: np.ndarray, cov_ma
     
     # Generate random weights from the multivariate normal distribution
     random_weights = np.random.multivariate_normal(mean_weights, cov_matrix, size=num_simulations)
+
+    # Replace negative weights with 0
+    random_weights = np.where(random_weights < 0, 0, random_weights)
     
     # Ensure that random_weights sums to 1
     random_weights /= random_weights.sum(axis=1)[:,np.newaxis]

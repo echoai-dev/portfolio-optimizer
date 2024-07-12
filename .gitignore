@@ -73,4 +73,4 @@ Thumbs.db
 # Output Files
 *.html
 assembled_contents.md
-test.out
+*.out

@@ -29,6 +29,7 @@ def portfolio_composition_with_cov_matrix(etfs: List[str], mean_weights: np.ndar
     # Calculate confidence intervals using the covariance matrix
     std_devs = np.sqrt(np.diag(cov_matrix))
     lower_bound = mean_weights - 1.96 * std_devs
+    lower_bound = np.where(lower_bound < 0, 0, lower_bound)
     upper_bound = mean_weights + 1.96 * std_devs
 
     lower_allocation_funds = total_funds * lower_bound

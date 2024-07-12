@@ -44,8 +44,6 @@ def bootstrap_portfolio_weights(returns: pd.DataFrame, num_samples: int = 100, b
     
     return mean_weights, cov_matrix, results
 
-
-
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Portfolio Optimization Tool')
     parser.add_argument('--etfs', nargs='+', default=['DGRO', 'QQQ', 'SPY', 'VGT', 'VIG', 'VOO', 'VOOG', 'VUG'],
